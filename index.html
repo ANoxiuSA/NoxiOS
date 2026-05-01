@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Noxui macOS Web OS</title>
+  <style>
+    :root {
+      --accent: #007aff;
+      --accent-2: #5856d6;
+      --bg-overlay: rgba(255, 255, 255, 0.08);
+      --glass: rgba(255, 255, 255, 0.34);
+      --glass-strong: rgba(255, 255, 255, 0.52);
+      --text: #101010;
+      --muted: rgba(16, 16, 16, 0.62);
+      --border: rgba(255, 255, 255, 0.48);
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+      --dock-height: 86px;
+      --menu-height: 30px;
+      --wallpaper: radial-gradient(circle at 25% 15%, rgba(255, 255, 255, 0.75), transparent 28%),
+                   radial-gradient(circle at 82% 22%, rgba(88, 86, 214, 0.72), transparent 34%),
+                   radial-gradient(circle at 35% 82%, rgba(0, 122, 255, 0.55), transparent 32%),
+                   linear-gradient(135deg, #f7d9ff 0%, #b7d8ff 38%, #d8f4ff 68%, #fff8e5 100%);
+    }
+
+    [data-theme="dark"] {
+      --bg-overlay: rgba(0, 0, 0, 0.12);
+      --glass: rgba(255, 255, 255, 0.16);
+      --glass-strong: rgba(255, 255, 255, 0.24);
+      --text: #f5f7fb;
+      --muted: rgba(245, 247, 251, 0.68);
+      --border: rgba(255, 255, 255, 0.22);
+      --shadow: 0 24px 76px rgba(0, 0, 0, 0.44);
+      --wallpaper: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.22), transparent 24%),
+                   radial-gradient(circle at 76% 16%, rgba(88, 86, 214, 0.74), transparent 36%),
+                   radial-gradient(circle at 42% 84%, rgba(0, 122, 255, 0.52), transparent 32%),
+                   linear-gradient(135deg, #111827 0%, #1b2254 42%, #1d102c 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      color: var(--text);
+      background: #111827;
+    }
+
+    body {
+      background: var(--wallpaper);
+      background-size: cover;
+      transition: background 0.45s ease, color 0.25s ease;
+    }
+
+    body.custom-wallpaper {
+      background-image: var(--custom-wallpaper), var(--wallpaper);
+    }
+
+    #menuBar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--menu-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 13px;
+      background: rgba(255, 255, 255, 0.32);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+      backdrop-filter: blur(24px) saturate(180%);
+      z-index: 10000;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    [data-theme="dark"] #menuBar {
+      background: rgba(25, 25, 30, 0.42);
+    }
+
+    .menu-left, .menu-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      white-space: nowrap;
+    }
+
+    .apple-mark {
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    #desktop {
+      position: fixed;
+      inset: var(--menu-height) 0 var(--dock-height) 0;
+      padding: 28px;
+      overflow: hidden;
+      background: var(--bg-overlay);
+      backdrop-filter: blur(1px);
+    }
+
+    .desktop-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 86px);
+      grid-auto-rows: 102px;
+      gap: 14px;
+      align-content: start;
+      width: 360px;
+      max-height: 100%;
+    }
+
+    .desktop-icon {
+      width: 86px;
+      height: 102px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      border: 1px solid transparent;
+      border-radius: 18px;
+      cursor: pointer;
+      color: white;
+      text-shadow: 0 1px 14px rgba(0, 0, 0, 0.6);
+      transition: 0.18s ease;
+      background: transparent;
+      font: inherit;
+    }
+
+    .desktop-icon:hover {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: rgba(255, 255, 255, 0.28);
+      transform: translateY(-1px);
+    }
+
+    .icon-bubble {
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      border-radius: 15px;
+      background: linear-gradient(180deg, #2f2f33, #050506);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+      font-size: 25px;
+      filter: grayscale(1) contrast(1.12);
+    }
+
+    .desktop-icon span:last-child {
+      font-size: 12px;
+      font-weight: 650;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    #dockWrap {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: var(--dock-height);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 10000;
+    }
+
+    #dock {
+      min-height: 64px;
+      max-width: min(94vw, 980px);
+      display: flex;
+      align-items: end;
+      gap: 9px;
+      padding: 9px 13px 12px;
+      background: rgba(255, 255, 255, 0.34);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 24px;
+      backdrop-filter: blur(28px) saturate(180%);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25);
+      pointer-events: auto;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    [data-theme="dark"] #dock {
+      background: rgba(30, 30, 38, 0.42);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    #dock::-webkit-scrollbar { display: none; }
+
+    .dock-icon {
+      position: relative;
+      width: 52px;
+      height: 52px;
+      border: 0;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #303033, #050505);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-size: 25px;
+      cursor: pointer;
+      box-shadow: 0 10px 26px rgba(0,0,0,.28), inset 0 1px 1px rgba(255,255,255,.38);
+      transition: transform 0.16s ease, filter 0.16s ease;
+      filter: grayscale(1) contrast(1.12);
+      flex: 0 0 auto;
+    }
+
+    .dock-icon:hover {
+      transform: translateY(-8px) scale(1.1);
+      filter: grayscale(1) contrast(1.2) brightness(1.12);
+    }
+
+    .dock-icon.open::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--text);
+      opacity: 0.72;
+    }
+
+    #launcher {
+      position: fixed;
+      left: 50%;
+      bottom: calc(var(--dock-height) + 12px);
+      width: 520px;
+      max-width: calc(100vw - 32px);
+      transform: translate(-50%, 20px) scale(0.96);
+      opacity: 0;
+      pointer-events: none;
+      transition: 0.22s cubic-bezier(.2,.9,.2,1);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      background: rgba(255, 255, 255, 0.36);
+      backdrop-filter: blur(34px) saturate(180%);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      z-index: 12000;
+    }
+
+    [data-theme="dark"] #launcher {
+      background: rgba(26, 26, 34, 0.52);
+    }
+
+    #launcher.open {
+      transform: translate(-50%, 0) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .launcher-title {
+      font-size: 22px;
+      font-weight: 820;
+      margin: 0 4px 14px;
+    }
+
+    .launcher-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+      gap: 12px;
+      max-height: 420px;
+      overflow: auto;
+    }
+
+    .launcher-app {
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text);
+      border-radius: 20px;
+      padding: 12px 6px;
+      display: grid;
+      place-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: 0.18s ease;
+      font: inherit;
+      font-weight: 700;
+    }
+
+    .launcher-app:hover {
+      background: rgba(255, 255, 255, 0.18);
+      border-color: var(--border);
+    }
+
+    .launcher-app .icon-bubble {
+      color: #fff;
+    }
+
+    .window {
+      position: absolute;
+      min-width: 330px;
+      min-height: 230px;
+      width: 760px;
+      height: 520px;
+      top: 70px;
+      left: 180px;
+      border: 1px solid rgba(255, 255, 255, 0.38);
+      border-radius: 14px;
+      background: rgba(246, 247, 250, 0.76);
+      backdrop-filter: blur(34px) saturate(180%);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      resize: both;
+      animation: popIn 0.22s cubic-bezier(.2,.95,.22,1);
+      z-index: 5;
+    }
+
+    [data-theme="dark"] .window {
+      background: rgba(34, 34, 42, 0.78);
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+
+    .window.maximized {
+      top: calc(var(--menu-height) + 6px) !important;
+      left: 6px !important;
+      width: calc(100vw - 12px) !important;
+      height: calc(100vh - var(--menu-height) - var(--dock-height) - 12px) !important;
+      resize: none;
+      border-radius: 12px;
+    }
+
+    .window.minimized { display: none; }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.965) translateY(12px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .titlebar {
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 12px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      background: rgba(255, 255, 255, 0.24);
+      cursor: grab;
+      position: relative;
+    }
+
+    [data-theme="dark"] .titlebar {
+      background: rgba(255, 255, 255, 0.08);
+      border-bottom-color: rgba(255, 255, 255, 0.09);
+    }
+
+    .titlebar:active { cursor: grabbing; }
+
+    .window-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 760;
+      letter-spacing: 0.1px;
+    }
+
+    .window-title span:first-child {
+      filter: grayscale(1) contrast(1.2);
+    }
+
+    .window-controls {
+      position: absolute;
+      left: 12px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .control {
+      width: 13px;
+      height: 13px;
+      border: 0;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
+    }
+
+    .control.close { background: #ff5f57; }
+    .control.minimize { background: #ffbd2e; }
+    .control.maximize { background: #28c840; }
+
+    .window-body {
+      height: calc(100% - 42px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #fff;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.22);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    [data-theme="dark"] .toolbar {
+      background: rgba(255, 255, 255, 0.06);
+      border-bottom-color: rgba(255,255,255,.08);
+    }
+
+    .toolbar button, .app-button {
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.44);
+      color: var(--text);
+      height: 32px;
+      padding: 0 12px;
+      cursor: pointer;
+      font-weight: 650;
+      transition: 0.16s ease;
+      font: inherit;
+    }
+
+    [data-theme="dark"] .toolbar button,
+    [data-theme="dark"] .app-button {
+      border-color: rgba(255,255,255,.14);
+      background: rgba(255,255,255,.12);
+    }
+
+    .toolbar button:hover, .app-button:hover {
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    [data-theme="dark"] .toolbar button:hover,
+    [data-theme="dark"] .app-button:hover {
+      background: rgba(255,255,255,.2);
+    }
+
+    .toolbar input, .settings-input, .terminal-input, select {
+      flex: 1;
+      height: 32px;
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: 10px;
+      outline: none;
+      padding: 0 12px;
+      background: rgba(255, 255, 255, 0.5);
+      color: var(--text);
+      font-weight: 600;
+      user-select: text;
+      font: inherit;
+    }
+
+    [data-theme="dark"] .toolbar input,
+    [data-theme="dark"] .settings-input,
+    [data-theme="dark"] .terminal-input,
+    [data-theme="dark"] select {
+      border-color: rgba(255,255,255,.14);
+      background: rgba(255,255,255,.11);
+    }
+
+    .notepad {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      gap: 10px;
+    }
+
+    .notepad-actions, .settings-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    textarea {
+      flex: 1;
+      resize: none;
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.52);
+      color: var(--text);
+      outline: none;
+      padding: 14px;
+      font-size: 15px;
+      line-height: 1.55;
+      user-select: text;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    [data-theme="dark"] textarea {
+      border-color: rgba(255,255,255,.13);
+      background: rgba(0,0,0,.18);
+    }
+
+    .settings {
+      padding: 18px;
+      overflow: auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid rgba(0,0,0,.08);
+      background: rgba(255, 255, 255, 0.34);
+      border-radius: 18px;
+      padding: 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    [data-theme="dark"] .card {
+      border-color: rgba(255,255,255,.12);
+      background: rgba(255,255,255,.08);
+    }
+
+    .card h3 { font-size: 16px; }
+    .card p { color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+    .color-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      border: 2px solid rgba(255,255,255,.75);
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,0,0,.18);
+    }
+
+    .hidden-file-input {
+      display: none;
+    }
+
+    .custom-app-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .custom-app-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.22);
+      border: 1px solid rgba(0,0,0,.06);
+      font-size: 13px;
+    }
+
+    [data-theme="dark"] .custom-app-item {
+      background: rgba(255,255,255,.08);
+      border-color: rgba(255,255,255,.1);
+    }
+
+    .calculator {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      height: 100%;
+    }
+
+    #calcDisplay {
+      width: 100%;
+      height: 70px;
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,.08);
+      background: rgba(255, 255, 255, 0.5);
+      color: var(--text);
+      padding: 14px;
+      font-size: 26px;
+      text-align: right;
+      font-weight: 800;
+      user-select: text;
+      overflow-x: auto;
+    }
+
+    [data-theme="dark"] #calcDisplay {
+      background: rgba(0,0,0,.22);
+      border-color: rgba(255,255,255,.13);
+    }
+
+    .calc-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .calc-grid button {
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: 15px;
+      background: rgba(255, 255, 255, 0.42);
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 760;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    [data-theme="dark"] .calc-grid button {
+      border-color: rgba(255,255,255,.11);
+      background: rgba(255,255,255,.1);
+    }
+
+    .calc-grid button:hover {
+      background: rgba(255,255,255,.62);
+      transform: translateY(-1px);
+    }
+
+    .calc-grid .equals {
+      background: var(--accent);
+      color: white;
+    }
+
+    .clock-app {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .clock-time {
+      font-size: clamp(48px, 10vw, 92px);
+      font-weight: 860;
+      letter-spacing: -4px;
+      text-shadow: 0 18px 50px rgba(0,0,0,.18);
+    }
+
+    .clock-date {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 20px;
+      font-weight: 650;
+    }
+
+    .terminal {
+      height: 100%;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(0,0,0,.74);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .terminal-output {
+      flex: 1;
+      overflow: auto;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 14px;
+      padding: 14px;
+      background: rgba(0,0,0,.32);
+      color: #d7ffd7;
+      user-select: text;
+      white-space: pre-wrap;
+      line-height: 1.55;
+    }
+
+    .terminal-input {
+      font-family: inherit;
+      color: #d7ffd7;
+      background: rgba(0,0,0,.28) !important;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: calc(var(--dock-height) + 18px);
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.54);
+      color: var(--text);
+      border-radius: 16px;
+      padding: 12px 16px;
+      backdrop-filter: blur(24px);
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+      transition: 0.25s ease;
+      z-index: 20000;
+      font-weight: 700;
+    }
+
+    [data-theme="dark"] .toast { background: rgba(30,30,38,.72); }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 760px) {
+      #desktop { padding: 14px; }
+      .desktop-grid { width: 100%; grid-template-columns: repeat(auto-fill, 82px); gap: 8px; }
+      .desktop-icon { width: 82px; height: 94px; }
+      .window {
+        left: 10px !important;
+        top: calc(var(--menu-height) + 10px) !important;
+        width: calc(100vw - 20px) !important;
+        height: calc(100vh - var(--menu-height) - var(--dock-height) - 22px) !important;
+      }
+      .menu-left span:not(:first-child) { display: none; }
+      .menu-right { font-size: 12px; gap: 8px; }
+      .dock-icon { width: 46px; height: 46px; }
+    }
+  </style>
+</head>
+<body>
+  <header id="menuBar">
+    <div class="menu-left">
+      <span class="apple-mark">●</span>
+      <strong>Noxui</strong>
+      <span>File</span>
+      <span>Edit</span>
+      <span>View</span>
+      <span>Window</span>
+      <span>Help</span>
+    </div>
+    <div class="menu-right">
+      <span>Wi‑Fi</span>
+      <span>100%</span>
+      <span id="trayDate"></span>
+      <span id="trayTime"></span>
+    </div>
+  </header>
+
+  <main id="desktop">
+    <section class="desktop-grid" id="desktopIcons"></section>
+  </main>
+
+  <section id="launcher" aria-label="Launchpad">
+    <div class="launcher-title">Launchpad</div>
+    <div class="launcher-grid" id="launcherGrid"></div>
+  </section>
+
+  <footer id="dockWrap">
+    <nav id="dock" aria-label="Dock"></nav>
+  </footer>
+
+  <div class="toast" id="toast">Saved</div>
+
+  <script>
+    const defaultApps = [
+      { id: 'launchpad', name: 'Launchpad', icon: '⌘', width: 0, height: 0, special: 'launcher' },
+      { id: 'browser', name: 'Safari', icon: '🌐', width: 900, height: 620 },
+      { id: 'files', name: 'Finder', icon: '📁', width: 900, height: 620 },
+      { id: 'games', name: 'Games', icon: '🎮', width: 900, height: 620 },
+      { id: 'notepad', name: 'Notes', icon: '📝', width: 640, height: 480 },
+      { id: 'settings', name: 'System Settings', icon: '⚙️', width: 660, height: 620 },
+      { id: 'calculator', name: 'Calculator', icon: '🧮', width: 380, height: 540 },
+      { id: 'clock', name: 'Clock', icon: '🕒', width: 520, height: 380 },
+      { id: 'terminal', name: 'Terminal', icon: '⌨️', width: 680, height: 460 }
+    ];
+
+    const HOME_URL = 'https://sosa.centromariapolis.cl/';
+    const FILES_URL = 'https://noxuiadrive.vercel.app';
+    const GAMES_URL = 'https://seraphgames.vercel.app';
+
+    const desktopIcons = document.getElementById('desktopIcons');
+    const launcherGrid = document.getElementById('launcherGrid');
+    const launcher = document.getElementById('launcher');
+    const dock = document.getElementById('dock');
+    const toast = document.getElementById('toast');
+
+    let zIndex = 20;
+    let windowCount = 0;
+    const openWindows = new Map();
+    let customApps = [];
+
+    function allApps() {
+      return [...defaultApps, ...customApps];
+    }
+
+    function init() {
+      loadSettings();
+      customApps = JSON.parse(localStorage.getItem('noxui-custom-apps') || '[]');
+      renderLaunchers();
+      updateTray();
+      setInterval(updateTray, 1000);
+      setInterval(updateClockApps, 1000);
+      document.addEventListener('pointerdown', closeLauncherOutside);
+    }
+
+    function renderLaunchers() {
+      desktopIcons.innerHTML = '';
+      launcherGrid.innerHTML = '';
+      dock.innerHTML = '';
+
+      allApps().filter(app => app.id !== 'launchpad').forEach(app => {
+        const desktopIcon = document.createElement('button');
+        desktopIcon.className = 'desktop-icon';
+        desktopIcon.innerHTML = `<span class="icon-bubble">${app.icon || '⬛'}</span><span>${app.name}</span>`;
+        desktopIcon.ondblclick = () => openApp(app.id);
+        desktopIcon.onclick = () => pulseIcon(desktopIcon);
+        desktopIcons.appendChild(desktopIcon);
+      });
+
+      allApps().forEach(app => {
+        const dockIcon = document.createElement('button');
+        dockIcon.className = 'dock-icon';
+        dockIcon.title = app.name;
+        dockIcon.dataset.appId = app.id;
+        dockIcon.textContent = app.icon || '⬛';
+        dockIcon.onclick = () => openApp(app.id);
+        dock.appendChild(dockIcon);
+
+        if (app.id !== 'launchpad') {
+          const launcherApp = document.createElement('button');
+          launcherApp.className = 'launcher-app';
+          launcherApp.innerHTML = `<span class="icon-bubble">${app.icon || '⬛'}</span><span>${app.name}</span>`;
+          launcherApp.onclick = () => {
+            openApp(app.id);
+            launcher.classList.remove('open');
+          };
+          launcherGrid.appendChild(launcherApp);
+        }
+      });
+      updateDock();
+    }
+
+    function pulseIcon(el) {
+      el.animate([
+        { transform: 'scale(1)' },
+        { transform: 'scale(0.96)' },
+        { transform: 'scale(1)' }
+      ], { duration: 160 });
+    }
+
+    function closeLauncherOutside(event) {
+      if (!launcher.contains(event.target) && !event.target.closest('.dock-icon')) {
+        launcher.classList.remove('open');
+      }
+    }
+
+    function openApp(appId) {
+      const app = allApps().find(a => a.id === appId);
+      if (!app) return;
+      if (app.special === 'launcher') {
+        launcher.classList.toggle('open');
+        return;
+      }
+
+      const existing = openWindows.get(appId);
+      if (existing) {
+        existing.classList.remove('minimized');
+        focusWindow(existing);
+        updateDock();
+        return;
+      }
+
+      const win = createWindow(app);
+      openWindows.set(appId, win);
+      document.getElementById('desktop').appendChild(win);
+      focusWindow(win);
+      updateDock();
+    }
+
+    function createWindow(app) {
+      windowCount++;
+      const win = document.createElement('section');
+      win.className = 'window';
+      win.dataset.appId = app.id;
+      win.style.width = app.width + 'px';
+      win.style.height = app.height + 'px';
+      win.style.left = Math.min(130 + windowCount * 24, window.innerWidth - 360) + 'px';
+      win.style.top = Math.min(52 + windowCount * 22, window.innerHeight - 330) + 'px';
+
+      win.innerHTML = `
+        <div class="titlebar">
+          <div class="window-controls">
+            <button class="control close" title="Close"></button>
+            <button class="control minimize" title="Minimize"></button>
+            <button class="control maximize" title="Maximize"></button>
+          </div>
+          <div class="window-title"><span>${app.icon || '⬛'}</span><span>${app.name}</span></div>
+        </div>
+        <div class="window-body">${getAppContent(app)}</div>
+      `;
+
+      win.addEventListener('pointerdown', () => focusWindow(win));
+      win.querySelector('.titlebar').addEventListener('pointerdown', event => startDrag(event, win));
+      win.querySelector('.minimize').onclick = () => minimizeWindow(win);
+      win.querySelector('.maximize').onclick = () => toggleMaximize(win);
+      win.querySelector('.close').onclick = () => closeWindow(win);
+
+      setTimeout(() => initializeAppContent(app.id, win), 0);
+      return win;
+    }
+
+    function getAppContent(app) {
+      const appId = app.id;
+      if (app.customUrl) {
+        return `<iframe src="${app.customUrl}" sandbox="allow-scripts allow-forms allow-popups allow-same-origin allow-pointer-lock allow-downloads allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>`;
+      }
+      if (appId === 'browser') {
+        return `
+          <div class="toolbar">
+            <button data-action="back">←</button>
+            <button data-action="forward">→</button>
+            <button data-action="refresh">↻</button>
+            <button data-action="home">⌂</button>
+            <input class="browser-url" value="${HOME_URL}" placeholder="Search or enter a URL" />
+            <button data-action="go">Go</button>
+          </div>
+          <iframe class="browser-frame" src="${HOME_URL}" referrerpolicy="no-referrer"></iframe>
+        `;
+      }
+      if (appId === 'files') {
+        return `<iframe src="${FILES_URL}" sandbox="allow-scripts allow-forms allow-popups allow-same-origin allow-downloads" referrerpolicy="no-referrer"></iframe>`;
+      }
+      if (appId === 'games') {
+        return `<iframe src="${GAMES_URL}" sandbox="allow-scripts allow-forms allow-popups allow-same-origin allow-pointer-lock allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>`;
+      }
+      if (appId === 'notepad') {
+        return `
+          <div class="notepad">
+            <div class="notepad-actions">
+              <button class="app-button" data-note="save">Save</button>
+              <button class="app-button" data-note="clear">Clear</button>
+              <button class="app-button" data-note="sample">Sample</button>
+            </div>
+            <textarea id="noteText" placeholder="Type your notes here..."></textarea>
+          </div>
+        `;
+      }
+      if (appId === 'settings') {
+        return `
+          <div class="settings">
+            <div class="card">
+              <h3>Appearance</h3>
+              <p>Make the Web OS feel like macOS with light or dark glass.</p>
+              <div class="settings-row">
+                <button class="app-button" data-theme-btn="light">Light</button>
+                <button class="app-button" data-theme-btn="dark">Dark</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>Accent Color</h3>
+              <p>Pick the main macOS-style highlight color.</p>
+              <div class="settings-row">
+                <button class="color-dot" style="background:#007aff" data-accent="#007aff"></button>
+                <button class="color-dot" style="background:#5856d6" data-accent="#5856d6"></button>
+                <button class="color-dot" style="background:#ff2d55" data-accent="#ff2d55"></button>
+                <button class="color-dot" style="background:#34c759" data-accent="#34c759"></button>
+                <button class="color-dot" style="background:#ff9500" data-accent="#ff9500"></button>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>Wallpaper</h3>
+              <p>Paste an image URL, pick a built-in wallpaper, or upload your own wallpaper from your computer.</p>
+              <div class="settings-row">
+                <input class="settings-input" id="wallpaperInput" placeholder="https://example.com/wallpaper.jpg" />
+                <button class="app-button" id="applyWallpaper">Apply URL</button>
+                <button class="app-button" id="uploadWallpaperBtn">Upload</button>
+                <button class="app-button" id="resetWallpaper">Reset</button>
+                <input class="hidden-file-input" id="wallpaperUpload" type="file" accept="image/*" />
+              </div>
+              <div class="settings-row">
+                <button class="app-button" data-wallpaper="mac">macOS</button>
+                <button class="app-button" data-wallpaper="aurora">Aurora</button>
+                <button class="app-button" data-wallpaper="sunset">Sunset</button>
+                <button class="app-button" data-wallpaper="ocean">Ocean</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>Add Your Own App</h3>
+              <p>Add any website as a dock/desktop app. It opens inside its own macOS-style window.</p>
+              <div class="settings-row">
+                <input class="settings-input" id="customAppName" placeholder="App name, like YouTube" />
+                <input class="settings-input" id="customAppUrl" placeholder="https://example.com" />
+              </div>
+              <div class="settings-row">
+                <input class="settings-input" id="customAppIcon" placeholder="Icon text, like ▶ or Y" maxlength="2" />
+                <button class="app-button" id="addCustomApp">Add App</button>
+                <button class="app-button" id="clearCustomApps">Clear Custom Apps</button>
+              </div>
+              <div class="custom-app-list" id="customAppList"></div>
+            </div>
+          </div>
+        `;
+      }
+      if (appId === 'calculator') {
+        const keys = ['C', '⌫', '%', '/', '7', '8', '9', '*', '4', '5', '6', '-', '1', '2', '3', '+', '0', '.', '±', '='];
+        return `
+          <div class="calculator">
+            <div id="calcDisplay">0</div>
+            <div class="calc-grid">
+              ${keys.map(k => `<button class="${k === '=' ? 'equals' : ''}" data-key="${k}">${k}</button>`).join('')}
+            </div>
+          </div>
+        `;
+      }
+      if (appId === 'clock') {
+        return `
+          <div class="clock-app">
+            <div>
+              <div class="clock-time app-clock-time">00:00:00</div>
+              <div class="clock-date app-clock-date">Loading date...</div>
+            </div>
+          </div>
+        `;
+      }
+      if (appId === 'terminal') {
+        return `
+          <div class="terminal">
+            <div class="terminal-output" id="terminalOutput">Noxui Terminal\nType "help" for commands.\n</div>
+            <input class="terminal-input" id="terminalInput" placeholder="Enter command..." autofocus />
+          </div>
+        `;
+      }
+      return '<div style="padding:16px">App not found.</div>';
+    }
+
+    function initializeAppContent(appId, win) {
+      if (appId === 'browser') initBrowser(win);
+      if (appId === 'notepad') initNotepad(win);
+      if (appId === 'settings') initSettings(win);
+      if (appId === 'calculator') initCalculator(win);
+      if (appId === 'clock') updateClockApps();
+      if (appId === 'terminal') initTerminal(win);
+    }
+
+    function initBrowser(win) {
+      const frame = win.querySelector('.browser-frame');
+      const input = win.querySelector('.browser-url');
+      const history = [HOME_URL];
+      let index = 0;
+
+      function normalizeAddress(value) {
+        const text = value.trim();
+        if (!text) return HOME_URL;
+        if (/^https?:\/\//i.test(text)) return text;
+        if (/^[\w-]+(\.[\w-]+)+/.test(text)) return 'https://' + text;
+        return 'https://duckduckgo.com/?q=' + encodeURIComponent(text);
+      }
+
+      function load(url, addHistory = true) {
+        frame.src = url;
+        input.value = url;
+        if (addHistory) {
+          history.splice(index + 1);
+          history.push(url);
+          index = history.length - 1;
+        }
+      }
+
+      win.querySelector('[data-action="go"]').onclick = () => load(normalizeAddress(input.value));
+      win.querySelector('[data-action="home"]').onclick = () => load(HOME_URL);
+      win.querySelector('[data-action="refresh"]').onclick = () => frame.src = frame.src;
+      win.querySelector('[data-action="back"]').onclick = () => {
+        if (index > 0) {
+          index--;
+          load(history[index], false);
+        }
+      };
+      win.querySelector('[data-action="forward"]').onclick = () => {
+        if (index < history.length - 1) {
+          index++;
+          load(history[index], false);
+        }
+      };
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') load(normalizeAddress(input.value));
+      });
+    }
+
+    function initNotepad(win) {
+      const textarea = win.querySelector('#noteText');
+      textarea.value = localStorage.getItem('noxui-note') || '';
+      win.querySelector('[data-note="save"]').onclick = () => {
+        localStorage.setItem('noxui-note', textarea.value);
+        showToast('Note saved');
+      };
+      win.querySelector('[data-note="clear"]').onclick = () => {
+        textarea.value = '';
+        localStorage.removeItem('noxui-note');
+        showToast('Note cleared');
+      };
+      win.querySelector('[data-note="sample"]').onclick = () => {
+        textarea.value = 'Welcome to Noxui macOS Web OS!\n\nThis Notes app saves automatically using localStorage.';
+      };
+      textarea.addEventListener('input', () => localStorage.setItem('noxui-note', textarea.value));
+    }
+
+    function initSettings(win) {
+      win.querySelectorAll('[data-theme-btn]').forEach(btn => {
+        btn.onclick = () => {
+          document.documentElement.dataset.theme = btn.dataset.themeBtn;
+          localStorage.setItem('noxui-theme', btn.dataset.themeBtn);
+          showToast(`${btn.dataset.themeBtn} mode enabled`);
+        };
+      });
+
+      win.querySelectorAll('[data-accent]').forEach(btn => {
+        btn.onclick = () => {
+          document.documentElement.style.setProperty('--accent', btn.dataset.accent);
+          localStorage.setItem('noxui-accent', btn.dataset.accent);
+          showToast('Accent updated');
+        };
+      });
+
+      const input = win.querySelector('#wallpaperInput');
+      const upload = win.querySelector('#wallpaperUpload');
+      input.value = localStorage.getItem('noxui-wallpaper-url') || '';
+
+      win.querySelector('#applyWallpaper').onclick = () => {
+        const url = input.value.trim();
+        if (!url) return showToast('Paste a wallpaper URL first');
+        setCustomWallpaper(`url('${url}')`, url);
+        showToast('Wallpaper applied');
+      };
+
+      win.querySelector('#uploadWallpaperBtn').onclick = () => upload.click();
+      upload.onchange = () => {
+        const file = upload.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          setCustomWallpaper(`url('${reader.result}')`, '');
+          localStorage.setItem('noxui-wallpaper-uploaded', reader.result);
+          showToast('Uploaded wallpaper applied');
+        };
+        reader.readAsDataURL(file);
+      };
+
+      win.querySelector('#resetWallpaper').onclick = () => {
+        document.body.classList.remove('custom-wallpaper');
+        document.documentElement.style.removeProperty('--custom-wallpaper');
+        localStorage.removeItem('noxui-wallpaper');
+        localStorage.removeItem('noxui-wallpaper-url');
+        localStorage.removeItem('noxui-wallpaper-uploaded');
+        input.value = '';
+        showToast('Wallpaper reset');
+      };
+
+      win.querySelectorAll('[data-wallpaper]').forEach(btn => {
+        btn.onclick = () => {
+          const choices = {
+            mac: 'radial-gradient(circle at 25% 15%, rgba(255,255,255,.75), transparent 28%), radial-gradient(circle at 82% 22%, rgba(88,86,214,.72), transparent 34%), radial-gradient(circle at 35% 82%, rgba(0,122,255,.55), transparent 32%), linear-gradient(135deg,#f7d9ff 0%,#b7d8ff 38%,#d8f4ff 68%,#fff8e5 100%)',
+            aurora: 'radial-gradient(circle at 20% 25%, rgba(45,212,191,.75), transparent 30%), radial-gradient(circle at 80% 18%, rgba(124,92,255,.85), transparent 30%), linear-gradient(135deg,#061018,#111448,#33103a)',
+            sunset: 'radial-gradient(circle at 20% 20%, rgba(255,200,87,.75), transparent 30%), radial-gradient(circle at 80% 30%, rgba(255,75,145,.7), transparent 32%), linear-gradient(135deg,#23111a,#512239,#120b30)',
+            ocean: 'radial-gradient(circle at 18% 18%, rgba(0,212,255,.7), transparent 32%), radial-gradient(circle at 78% 75%, rgba(34,197,94,.5), transparent 34%), linear-gradient(135deg,#03131e,#08314b,#0f172a)'
+          };
+          setCustomWallpaper(choices[btn.dataset.wallpaper], '');
+          input.value = '';
+          showToast('Wallpaper applied');
+        };
+      });
+
+      const nameInput = win.querySelector('#customAppName');
+      const urlInput = win.querySelector('#customAppUrl');
+      const iconInput = win.querySelector('#customAppIcon');
+      const list = win.querySelector('#customAppList');
+
+      function renderCustomAppList() {
+        list.innerHTML = customApps.length
+          ? customApps.map(app => `<div class="custom-app-item"><span>${app.icon || '⬛'} ${app.name}</span><button class="app-button" data-remove-app="${app.id}">Remove</button></div>`).join('')
+          : '<p>No custom apps yet.</p>';
+        list.querySelectorAll('[data-remove-app]').forEach(btn => {
+          btn.onclick = () => {
+            const id = btn.dataset.removeApp;
+            const winToClose = openWindows.get(id);
+            if (winToClose) closeWindow(winToClose);
+            customApps = customApps.filter(app => app.id !== id);
+            saveCustomApps();
+            renderLaunchers();
+            renderCustomAppList();
+            showToast('Custom app removed');
+          };
+        });
+      }
+
+      win.querySelector('#addCustomApp').onclick = () => {
+        const name = nameInput.value.trim();
+        let url = urlInput.value.trim();
+        const icon = iconInput.value.trim() || '⬛';
+        if (!name || !url) return showToast('Add an app name and URL');
+        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+        const app = {
+          id: 'custom-' + Date.now(),
+          name,
+          icon,
+          customUrl: url,
+          width: 880,
+          height: 600
+        };
+        customApps.push(app);
+        saveCustomApps();
+        renderLaunchers();
+        renderCustomAppList();
+        nameInput.value = '';
+        urlInput.value = '';
+        iconInput.value = '';
+        showToast('Custom app added');
+      };
+
+      win.querySelector('#clearCustomApps').onclick = () => {
+        customApps.forEach(app => {
+          const winToClose = openWindows.get(app.id);
+          if (winToClose) closeWindow(winToClose);
+        });
+        customApps = [];
+        saveCustomApps();
+        renderLaunchers();
+        renderCustomAppList();
+        showToast('Custom apps cleared');
+      };
+
+      renderCustomAppList();
+    }
+
+    function saveCustomApps() {
+      localStorage.setItem('noxui-custom-apps', JSON.stringify(customApps));
+    }
+
+    function setCustomWallpaper(value, url) {
+      document.documentElement.style.setProperty('--custom-wallpaper', value);
+      document.body.classList.add('custom-wallpaper');
+      localStorage.setItem('noxui-wallpaper', value);
+      localStorage.setItem('noxui-wallpaper-url', url || '');
+      if (url) localStorage.removeItem('noxui-wallpaper-uploaded');
+    }
+
+    function initCalculator(win) {
+      const display = win.querySelector('#calcDisplay');
+      let expr = '';
+
+      function render() {
+        display.textContent = expr || '0';
+      }
+
+      win.querySelectorAll('[data-key]').forEach(btn => {
+        btn.onclick = () => {
+          const key = btn.dataset.key;
+          if (key === 'C') expr = '';
+          else if (key === '⌫') expr = expr.slice(0, -1);
+          else if (key === '±') {
+            if (expr.startsWith('-')) expr = expr.slice(1);
+            else if (expr) expr = '-' + expr;
+          }
+          else if (key === '=') {
+            try {
+              if (!/^[0-9+\-*/%. ()]+$/.test(expr)) throw new Error('Invalid');
+              expr = String(Function(`"use strict"; return (${expr})`)());
+            } catch {
+              expr = 'Error';
+              setTimeout(() => { expr = ''; render(); }, 900);
+            }
+          }
+          else {
+            if (expr === 'Error') expr = '';
+            expr += key;
+          }
+          render();
+        };
+      });
+    }
+
+    function initTerminal(win) {
+      const output = win.querySelector('#terminalOutput');
+      const input = win.querySelector('#terminalInput');
+      const print = text => {
+        output.textContent += text + '\n';
+        output.scrollTop = output.scrollHeight;
+      };
+
+      input.addEventListener('keydown', event => {
+        if (event.key !== 'Enter') return;
+        const cmd = input.value.trim().toLowerCase();
+        input.value = '';
+        print('> ' + cmd);
+
+        if (cmd === 'help') print('Commands: help, clear, date, time, apps, about, open safari, open finder, open games, open notes, open settings, open calculator, open clock');
+        else if (cmd === 'clear') output.textContent = '';
+        else if (cmd === 'date') print(new Date().toLocaleDateString());
+        else if (cmd === 'time') print(new Date().toLocaleTimeString());
+        else if (cmd === 'apps') print(allApps().map(a => a.name).join(', '));
+        else if (cmd === 'about') print('Noxui macOS Web OS: a single-file HTML desktop with dock, Launchpad, custom apps, and uploaded wallpapers.');
+        else if (cmd.startsWith('open ')) {
+          const target = cmd.replace('open ', '').trim();
+          const found = allApps().find(a => a.id === target || a.name.toLowerCase().includes(target));
+          if (found) {
+            openApp(found.id);
+            print('Opening ' + found.name + '...');
+          } else print('App not found.');
+        }
+        else if (cmd) print('Unknown command. Type help.');
+      });
+    }
+
+    function startDrag(event, win) {
+      if (event.target.closest('.window-controls') || win.classList.contains('maximized')) return;
+      event.preventDefault();
+      focusWindow(win);
+      const rect = win.getBoundingClientRect();
+      const offsetX = event.clientX - rect.left;
+      const offsetY = event.clientY - rect.top;
+
+      function move(e) {
+        const maxX = window.innerWidth - 120;
+        const maxY = window.innerHeight - parseInt(getComputedStyle(document.documentElement).getPropertyValue('--dock-height')) - 54;
+        win.style.left = Math.max(-win.offsetWidth + 120, Math.min(e.clientX - offsetX, maxX)) + 'px';
+        win.style.top = Math.max(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--menu-height')), Math.min(e.clientY - offsetY, maxY)) + 'px';
+      }
+
+      function stop() {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', stop);
+      }
+
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', stop);
+    }
+
+    function focusWindow(win) {
+      zIndex++;
+      win.style.zIndex = zIndex;
+      document.querySelectorAll('.window').forEach(w => w.classList.remove('focused'));
+      win.classList.add('focused');
+      updateDock();
+    }
+
+    function minimizeWindow(win) {
+      win.classList.add('minimized');
+      updateDock();
+    }
+
+    function toggleMaximize(win) {
+      win.classList.toggle('maximized');
+      focusWindow(win);
+    }
+
+    function closeWindow(win) {
+      openWindows.delete(win.dataset.appId);
+      win.remove();
+      updateDock();
+    }
+
+    function updateDock() {
+      document.querySelectorAll('.dock-icon').forEach(btn => {
+        btn.classList.toggle('open', openWindows.has(btn.dataset.appId));
+      });
+    }
+
+    function updateTray() {
+      const now = new Date();
+      document.getElementById('trayTime').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('trayDate').textContent = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+
+    function updateClockApps() {
+      const now = new Date();
+      document.querySelectorAll('.app-clock-time').forEach(el => {
+        el.textContent = now.toLocaleTimeString();
+      });
+      document.querySelectorAll('.app-clock-date').forEach(el => {
+        el.textContent = now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      });
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove('show'), 1600);
+    }
+
+    function loadSettings() {
+      const theme = localStorage.getItem('noxui-theme') || 'light';
+      const accent = localStorage.getItem('noxui-accent');
+      const wallpaper = localStorage.getItem('noxui-wallpaper');
+      const uploadedWallpaper = localStorage.getItem('noxui-wallpaper-uploaded');
+      document.documentElement.dataset.theme = theme;
+      if (accent) document.documentElement.style.setProperty('--accent', accent);
+      if (uploadedWallpaper) {
+        document.documentElement.style.setProperty('--custom-wallpaper', `url('${uploadedWallpaper}')`);
+        document.body.classList.add('custom-wallpaper');
+      } else if (wallpaper) {
+        document.documentElement.style.setProperty('--custom-wallpaper', wallpaper);
+        document.body.classList.add('custom-wallpaper');
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
