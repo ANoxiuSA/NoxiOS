@@ -760,7 +760,7 @@
       { id: 'terminal', name: 'Terminal', icon: '⌨️', width: 680, height: 460 }
     ];
 
-    const HOME_URL = 'https://math.reformarchive.com/';
+    const HOME_URL = 'https://cdn.jsdelivr.net/gh/coinbaselarper/svg@latest/logo.svg#/';
     const FILES_URL = 'https://noxuiadrive.vercel.app';
     const GAMES_URL = 'https://seraphgames.vercel.app';
 
@@ -900,19 +900,11 @@
       if (app.customUrl) {
         return `<iframe src="${app.customUrl}" sandbox="allow-scripts allow-forms allow-popups allow-same-origin allow-pointer-lock allow-downloads allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>`;
       }
-      if (appId === 'browser') {
-        return `
-          <div class="toolbar">
-            <button data-action="back">←</button>
-            <button data-action="forward">→</button>
-            <button data-action="refresh">↻</button>
-            <button data-action="home">⌂</button>
-            <input class="browser-url" value="${HOME_URL}" placeholder="Search or enter a URL" />
-            <button data-action="go">Go</button>
-          </div>
-          <iframe class="browser-frame" src="${HOME_URL}" referrerpolicy="no-referrer"></iframe>
-        `;
-      }
+if (appId === 'browser') {
+  return `
+    <iframe class="browser-frame" src="${HOME_URL}" referrerpolicy="no-referrer"></iframe>
+  `;
+}
       if (appId === 'files') {
         return `<iframe src="${FILES_URL}" sandbox="allow-scripts allow-forms allow-popups allow-same-origin allow-downloads" referrerpolicy="no-referrer"></iframe>`;
       }
@@ -1030,50 +1022,10 @@
       if (appId === 'clock') updateClockApps();
       if (appId === 'terminal') initTerminal(win);
     }
-
-    function initBrowser(win) {
-      const frame = win.querySelector('.browser-frame');
-      const input = win.querySelector('.browser-url');
-      const history = [HOME_URL];
-      let index = 0;
-
-      function normalizeAddress(value) {
-        const text = value.trim();
-        if (!text) return HOME_URL;
-        if (/^https?:\/\//i.test(text)) return text;
-        if (/^[\w-]+(\.[\w-]+)+/.test(text)) return 'https://' + text;
-        return 'https://duckduckgo.com/?q=' + encodeURIComponent(text);
-      }
-
-      function load(url, addHistory = true) {
-        frame.src = url;
-        input.value = url;
-        if (addHistory) {
-          history.splice(index + 1);
-          history.push(url);
-          index = history.length - 1;
-        }
-      }
-
-      win.querySelector('[data-action="go"]').onclick = () => load(normalizeAddress(input.value));
-      win.querySelector('[data-action="home"]').onclick = () => load(HOME_URL);
-      win.querySelector('[data-action="refresh"]').onclick = () => frame.src = frame.src;
-      win.querySelector('[data-action="back"]').onclick = () => {
-        if (index > 0) {
-          index--;
-          load(history[index], false);
-        }
-      };
-      win.querySelector('[data-action="forward"]').onclick = () => {
-        if (index < history.length - 1) {
-          index++;
-          load(history[index], false);
-        }
-      };
-      input.addEventListener('keydown', event => {
-        if (event.key === 'Enter') load(normalizeAddress(input.value));
-      });
-    }
+ function initBrowser(win) {
+  const frame = win.querySelector('.browser-frame');
+  frame.src = HOME_URL;
+}
 
     function initNotepad(win) {
       const textarea = win.querySelector('#noteText');
